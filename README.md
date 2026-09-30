@@ -1,12 +1,16 @@
 # Jianying Editor 11.5
 
-**Windows 剪映 11.5 加密草稿兼容扩展 · Agent Skill · v0.1.0**
+**Windows 剪映 11.5 加密草稿兼容扩展 · Agent Skill · v0.1.1**
 
 让具备本机执行能力的 AI 助手读取剪映加密草稿，在独立副本中修改字幕、音量等数据，并重新加密保存。实测版本：**剪映专业版 11.5.0.14471 / Windows x64**。
 
 An independent Agent Skill for inspecting and editing encrypted Jianying drafts through the user's installed Windows DLL, with source-preserving copy edits and roundtrip verification.
 
 这是独立的社区兼容扩展，基于 [luoluoluo22/jianying-editor-skill](https://github.com/luoluoluo22/jianying-editor-skill) v1.7.0 的工作流，并参考 [wenshui330/jy-draftc](https://github.com/wenshui330/jy-draftc) 的本机 DLL 调用方式。不是剪映、豆包或 OpenAI 的官方项目，也不代表上游作者发布了 11.5 支持。
+
+## v0.1.1 修复
+
+保留调用方提供的工程根目录写法，修复 Windows 8.3 短路径别名在复制工程时未同步迁移内部素材路径的问题。输出路径仍使用规范路径，测试同时按规范路径校验。建议使用 v0.1.1 或更高版本。
 
 ## 可以做什么
 
@@ -28,8 +32,8 @@ An independent Agent Skill for inspecting and editing encrypted Jianying drafts 
 
 发布包分为两种：
 
-- `jianying-editor-115-v0.1.0.zip`：标准技能包，解压后单个顶层目录中包含 `SKILL.md`、`scripts/` 和 `references/`。
-- `jianying-editor-115-github-v0.1.0.zip`：完整仓库源码，含中文说明、许可、测试和打包脚本。用于建立 GitHub 仓库；不要把它当成仅含技能的导入包。
+- `jianying-editor-115-v0.1.1.zip`：标准技能包，解压后单个顶层目录中包含 `SKILL.md`、`scripts/` 和 `references/`。
+- `jianying-editor-115-github-v0.1.1.zip`：完整仓库源码，含中文说明、许可、测试和打包脚本。用于建立 GitHub 仓库；不要把它当成仅含技能的导入包。
 
 ### 桌面豆包
 
@@ -120,7 +124,7 @@ python -m unittest discover -s skills/jianying-editor-115/scripts -p 'test_*.py'
 
 ## 在 GitHub 发布
 
-建议仓库名：`jianying-editor-115`。将源码包解压后的仓库内容上传到你自己的仓库；不要把整个 ZIP 当作唯一源码文件上传。创建 `v0.1.0` Release，并附上标准技能 ZIP 和 `SHA256SUMS.txt`。
+建议仓库名：`jianying-editor-115`。将源码包解压后的仓库内容上传到你自己的仓库；不要把整个 ZIP 当作唯一源码文件上传。创建 `v0.1.1` Release，并附上标准技能 ZIP 和 `SHA256SUMS.txt`。
 
 从源码重新构建发布包：
 
