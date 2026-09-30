@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+upstream-jianying/
+jianying-full-runtime/
+.env
+.env.*
+*.dll
+*.exe
+*.mp4
+*.mov
+*.webm
+draft_content.json
+draft_info.json
+draft_meta_info.json
