@@ -13,6 +13,7 @@
 - The app saves sparse JSON: omitted numeric timerange fields mean zero; preserve those omissions rather than rejecting a valid native file.
 - Distinguish plaintext, Base64 JSON and opaque Base64 encryption candidates. Malformed plaintext fails without writing.
 - Edit existing single-main-timeline projects as raw JSON in independent folders. Preserve modern fields and synchronize root/main mirrors, including stale plaintext mirrors.
+- Preserve the caller's source-root spelling when remapping paths, including Windows 8.3 aliases; returned project paths use their canonical form.
 - Retain old APIs for new plaintext generation. Block native projects from their serializer even with overwrite=True. Loading failure no longer recreates a project.
 - Multiple active timelines, macOS encrypted I/O, all UI controls and unattended export are not implied by codec success. Verify separately.
 - native_ui_verified remains false on clone output until a separate actual app interaction passes.
