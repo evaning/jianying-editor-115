@@ -1,0 +1,13 @@
+interface:
+  display_name: 剪映 11.5 编辑助手
+  short_description: 读取加密草稿，在独立副本中修改并验证剪映 11.5 工程
+  default_prompt: 使用 $jianying-editor-115 检查我的剪映版本与草稿，在副本中完成修改并验证。
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
