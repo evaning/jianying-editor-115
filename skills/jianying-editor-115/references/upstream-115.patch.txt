@@ -1,0 +1,157 @@
+--- a/scripts/draft_inspector.py
++++ b/scripts/draft_inspector.py
+@@ -1,6 +1,7 @@
+ import argparse
+ import json
+ import os
++from draft_codec import read_json, DraftError
+ from typing import Any, Dict, List, Optional
+ 
+ from utils.formatters import (
+@@ -27,8 +28,7 @@
+ 
+ 
+ def _read_json(path: str) -> Dict[str, Any]:
+-    with open(path, "r", encoding="utf-8") as f:
+-        return json.load(f)
++    return read_json(path)
+ 
+ 
+ def cmd_list(root: str, limit: int) -> Dict[str, Any]:
+@@ -73,6 +73,8 @@
+             data["meta"] = _read_json(meta_path)
+ 
+         return _ok(data)
++    except DraftError as e:
++        return _err("draft_codec_error", str(e))
+     except json.JSONDecodeError as e:
+         return _err("invalid_json", f"JSON decode failed: {e}")
+     except OSError as e:
+--- a/scripts/utils/formatters.py
++++ b/scripts/utils/formatters.py
+@@ -10,11 +10,12 @@
+ 
+ def find_draft_content_path(draft_path: str) -> Optional[str]:
+     """Return the current draft content JSON path, supporting v5.9+ and legacy drafts."""
+-    for filename in DRAFT_CONTENT_FILENAMES:
+-        content_path = os.path.join(draft_path, filename)
+-        if os.path.exists(content_path):
+-            return content_path
+-    return None
++    from pathlib import Path
++    from modern_draft import choose_content
++    folder = Path(draft_path)
++    if not any((folder / name).is_file() for name in DRAFT_CONTENT_FILENAMES) and not (folder / "Timelines" / "project.json").is_file():
++        return None
++    return str(choose_content(folder))
+ 
+ 
+ # ----------------- 路径自动探测 -----------------
+--- a/scripts/core/project_base.py
++++ b/scripts/core/project_base.py
+@@ -21,7 +21,7 @@
+         width: int = 1920,
+         height: int = 1080,
+         drafts_root: str = None,
+-        overwrite: bool = True,
++        overwrite: bool = False,
+         script_instance=None,
+     ):
+         self.root = os.path.abspath(drafts_root or get_default_drafts_root())
+@@ -51,34 +51,14 @@
+ 
+         has_draft = self.df.has_draft(self.name)
+         if has_draft:
+-            draft_path = self._safe_join_root(self.name)
+-            content_path = os.path.join(draft_path, "draft_info.json")
+-            if not os.path.exists(content_path):
+-                content_path = os.path.join(draft_path, "draft_content.json")
+-                
+-            meta_path = os.path.join(draft_path, "draft_meta_info.json")
+-            if not os.path.exists(content_path) or not os.path.exists(meta_path):
+-                if overwrite:
+-                    print(f"Corrupted draft detected (missing json): {self.name}")
+-                    print("Auto-healing: Removing corrupted folder...")
+-                    try:
+-                        self._safe_remove_dir(draft_path)
+-                        has_draft = False
+-                    except Exception as e:
+-                        print(f"Failed to cleanup corrupted draft: {e}")
+-                else:
+-                    print(
+-                        f"Corrupted draft detected: {self.name} (missing json). "
+-                        "Use overwrite=True to auto-fix."
+-                    )
++            from modern_draft import reject_native_for_legacy
++            reject_native_for_legacy(self.draft_dir)
++            if not any(os.path.isfile(os.path.join(self.draft_dir, n)) for n in ("draft_info.json", "draft_content.json")):
++                raise ValueError("Existing draft has no content. Original folder preserved; choose a new name.")
+ 
+         if has_draft and not overwrite:
+             print(f"Loading existing project: {self.name}")
+-            try:
+-                self.script = self.df.load_template(self.name)
+-            except Exception as e:
+-                print(f"Load failed ({e}), forcing recreate...")
+-                self.script = self.df.create_draft(self.name, width, height, allow_replace=True)
++            self.script = self.df.load_template(self.name)
+         else:
+             print(f"Creating new project: {self.name}")
+             max_retries = 3
+--- a/scripts/vendor/pyJianYingDraft/script_file.py
++++ b/scripts/vendor/pyJianYingDraft/script_file.py
+@@ -232,6 +232,8 @@
+         Raises:
+             `FileNotFoundError`: JSON文件不存在
+         """
++        from modern_draft import reject_native_for_legacy
++        reject_native_for_legacy(os.path.dirname(json_path))
+         obj = ScriptFile(**util.provide_ctor_defaults(ScriptFile))
+         obj.save_path = json_path
+         if not os.path.exists(json_path):
+@@ -880,6 +882,8 @@
+ 
+     def dump(self, file_path: str) -> None:
+         """将草稿文件内容写入文件"""
++        from modern_draft import reject_native_for_legacy
++        reject_native_for_legacy(os.path.dirname(file_path))
+         with open(file_path, "w", encoding="utf-8") as f:
+             f.write(self.dumps())
+ 
+--- a/scripts/vendor/pyJianYingDraft/__init__.py
++++ b/scripts/vendor/pyJianYingDraft/__init__.py
+@@ -26,7 +26,11 @@
+ # 仅在Windows系统下导入jianying_controller
+ ISWIN = (sys.platform == 'win32')
+ if ISWIN:
+-    from .jianying_controller import JianyingController, ExportResolution, ExportFramerate
++    try:
++        from .jianying_controller import JianyingController, ExportResolution, ExportFramerate
++    except ModuleNotFoundError as exc:
++        if exc.name != "uiautomation":
++            raise
+ 
+ from .time_util import SEC, tim, trange
+ 
+--- a/scripts/vendor/pyJianYingDraft/draft_folder.py
++++ b/scripts/vendor/pyJianYingDraft/draft_folder.py
+@@ -78,6 +78,8 @@
+         """
+         draft_path = os.path.join(self.folder_path, draft_name)
+         if os.path.exists(draft_path):
++            from modern_draft import reject_native_for_legacy
++            reject_native_for_legacy(draft_path)
+             if not allow_replace:
+                 raise FileExistsError(f"草稿文件夹 {draft_name} 已存在且不允许覆盖")
+             shutil.rmtree(draft_path)
+@@ -155,6 +157,10 @@
+         if os.path.exists(new_draft_path) and not allow_replace:
+             raise FileExistsError(f"新草稿 {new_draft_name} 已存在且不允许覆盖")
+ 
++        from modern_draft import reject_native_for_legacy
++        reject_native_for_legacy(template_path)
++        if os.path.exists(new_draft_path):
++            reject_native_for_legacy(new_draft_path)
+         # 复制草稿文件夹
+         shutil.copytree(template_path, new_draft_path, dirs_exist_ok=allow_replace)
+ 
