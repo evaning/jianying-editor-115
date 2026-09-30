@@ -46,7 +46,7 @@ class DraftCompatibilityTests(unittest.TestCase):
     def test_current_timeline_over_stale_info(self):
         result = inspect(self.source)
         self.assertEqual(result['duration_us'], 3000000)
-        self.assertEqual(choose_content(self.source), self.timeline / 'draft_content.json')
+        self.assertEqual(choose_content(self.source), (self.timeline / 'draft_content.json').resolve())
         self.assertTrue(any(not x['same_content'] for x in result['other_files']))
 
     def test_plain_bom_and_base64_json(self):
@@ -100,7 +100,7 @@ class DraftCompatibilityTests(unittest.TestCase):
         self.assertEqual(actual['tracks'][0]['segments'][0]['volume'], 0.4)
         self.assertEqual(actual, json.loads((destination / 'draft_info.json').read_bytes()))
         self.assertEqual(actual, json.loads((destination / 'Timelines' / 'main' / 'draft_content.json').read_bytes()))
-        self.assertEqual(actual['materials']['videos'][0]['path'], (destination / 'media.bin').as_posix())
+        self.assertEqual(actual['materials']['videos'][0]['path'], (destination / 'media.bin').resolve().as_posix())
         self.assertNotEqual(json.loads((destination / 'draft_meta_info.json').read_bytes())['draft_id'], 'old')
 
     def test_existing_and_nested_destinations_rejected(self):

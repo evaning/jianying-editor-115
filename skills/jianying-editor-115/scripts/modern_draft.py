@@ -195,7 +195,10 @@ def assert_editor_closed():
 
 def clone_edit(source, destination, plan=None, install_dir=None):
     assert_editor_closed()
-    source = Path(source).resolve(strict=True)
+    # Keep the caller's spelling as well as the canonical path. Windows may
+    # expand an 8.3 parent (e.g. RUNNER~1), while draft media still uses it.
+    source_alias = Path(source).absolute()
+    source = source_alias.resolve(strict=True)
     destination = Path(destination).absolute().resolve()
     if destination.exists() or source == destination or source in destination.parents or destination in source.parents:
         raise DraftError('Destination must be a new folder outside the source project')
@@ -215,6 +218,9 @@ def clone_edit(source, destination, plan=None, install_dir=None):
     project_id = str(uuid.uuid4()).upper()
     updated = remap_paths(updated, source, destination)
     metadata = remap_paths(metadata, source, destination)
+    if source_alias != source:
+        updated = remap_paths(updated, source_alias, destination)
+        metadata = remap_paths(metadata, source_alias, destination)
     metadata.update(draft_id=project_id, draft_name=destination.name,
                     draft_fold_path=destination.as_posix(), draft_root_path=destination.parent.as_posix())
     if 'draft_json_file' in metadata:
